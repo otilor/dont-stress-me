@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
 	"github.com/google/go-github/github"
@@ -12,36 +12,49 @@ import (
 var ctx = context.Background()
 
 
+type Details struct {
+	Public_repositories int
+	Username string
+}
+
+var rdb = redis.NewClient(&redis.Options{
+Addr: "127.0.0.1:6379",
+Password: "",
+DB: 0,
+})
+
 func main() {
 	r := gin.Default()
 
-	type Details struct {
-		Username string
-		Public_repositories int
-	}
+
 
 	r.GET("/repositories/:username", func(c *gin.Context) {
-		c.JSON(200, &Details{Username: c.Param("username"), Public_repositories: len(getRepositoriesFromUsername(c.Param("username")))})
+		responseDetails := &Details{Username: c.Param("username"), Public_repositories: len(getRepositoriesFromUsername(c.Param("username")))}
+		c.JSON(200, responseDetails)
+		if cacheDetails(responseDetails)  {
+			logrus.Println("Successfully cached!")
+		} else {
+			logrus.Println("Something else happened!")
+		}
 	})
 	r.Run("127.0.0.1:7000")
 }
 
-func ExampleClient() {
-	rdb := redis.NewClient(&redis.Options{
-		Addr: "127.0.0.1:6379",
-		Password: "",
-		DB: 0,
-	})
-	err := rdb.Set("key", "value", 10000)
+
+
+func cacheDetails(details *Details) bool {
+	username := details.Username
+
+	marshalledDetails, err := json.Marshal(details)
 	if err != nil {
 		logrus.Fatalln(err)
 	}
 
-	fmt.Println("Successfully set key!")
-}
-
-func cacheDetails(details string) {
-
+	err = rdb.Set(string(username), marshalledDetails, 0).Err()
+	if err != nil {
+		logrus.Fatalln(err)
+	}
+	return true
 }
 
 func getRepositoriesFromUsername(username string) []*github.Repository{
