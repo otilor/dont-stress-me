@@ -13,7 +13,7 @@ func main() {
 		c.JSON(200, gin.H{
 			"message":"pong",
 			"username":c.Param("username"),
-			"repositories": len (getRepositoriesFromUsername(c.Param("username"))),
+			"public_repositories": len (getRepositoriesFromUsername(c.Param("username"))),
 		})
 	})
 	r.Run("127.0.0.1:7000")
