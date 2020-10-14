@@ -11,6 +11,13 @@ import (
 	"net/http"
 )
 
+const DeletedResourceMessage = "The specified resource has been deleted."
+
+type Messages struct {
+	StatusCode int	`json:"status_code"`
+	Description string `json:"description"`
+}
+
 var ctx = context.Background()
 
 var client = github.NewClient(nil)
@@ -31,6 +38,9 @@ func main() {
 	r := gin.Default()
 	r.Handle("GET", "greet", greetMe)
 	r.Handle("GET","repositories/:username", repositoryHandler)
+
+	// Deletes
+	r.Handle("DELETE", "repositories/:username", deleteHandler)
 
 	// Start the server
 	r.Run("127.0.0.1:7000")
@@ -57,6 +67,14 @@ func repositoryHandler(c *gin.Context) {
 		cacheDetails(responseDetails)
 		logrus.Println("Successfully cached!")
 	}
+}
+
+func deleteHandler(c *gin.Context) {
+	rdb.Del(c.Param("username"))
+	c.JSON(http.StatusOK, Messages{
+		StatusCode:  http.StatusOK,
+		Description: DeletedResourceMessage,
+	})
 }
 
 func greetMe(c *gin.Context) {
